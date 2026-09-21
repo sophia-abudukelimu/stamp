@@ -71,7 +71,7 @@ Four commands, no data required, about ten minutes on a laptop.
 ### 1. Install
 
 ```bash
-git clone https://github.com/<your-username>/stamp.git
+git clone https://github.com/<sophia-abudukelimu>/stamp.git
 cd stamp
 pip install -r requirements.txt
 ```
@@ -317,7 +317,7 @@ runs/demo/
 ## Installation
 
 ```bash
-git clone https://github.com/<your-username>/stamp.git
+git clone https://github.com/<sophia-abudukelimu>/stamp.git
 cd stamp
 pip install -r requirements.txt
 ```
@@ -354,7 +354,7 @@ Command-line flags on `train.py` override them.
   author = {Abudukelimu, Sophia},
   year   = {2026},
   note   = {Manuscript in preparation},
-  url    = {https://github.com/<your-username>/stamp}
+  url    = {https://github.com/<sophia-abudukelimu>/stamp}
 }
 ```
 
@@ -364,4 +364,4 @@ Command-line flags on `train.py` override them.
 
 ## Contact
 
-Open an issue on GitHub, or email <your-email>.
+Open an issue on GitHub, or email <sophia.abudukelimu@yale.edu>.
