@@ -1,0 +1,11 @@
+# Core
+numpy>=1.23
+pandas>=1.5
+h5py>=3.7
+scipy>=1.9
+scikit-learn>=1.1
+matplotlib>=3.6
+
+# Model. 2.0 is the floor: scaled_dot_product_attention is used for the fused
+# attention path during training.
+torch>=2.0
