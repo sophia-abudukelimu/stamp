@@ -12,7 +12,9 @@ Widefield imaging of a cholinergic sensor covers the whole dorsal cortex at 10 H
 
 The question is whether the **spatio-temporal structure** of cortical acetylcholine signalling is disrupted in the AD model — which regions predict which, and whether that coupling breaks down progressively with age. 
 
-Answering it means measuring those inter-regional relationships directly, which is exactly what STAMP's attention mechanism computes: for every region at every moment, it learns a directed, content-dependent weight to every other region at every earlier moment. STAMP further turns this into a number — a region's reconstruction R² stays high while it is coupled to the rest of the cortex and falls as it decouples — and running the same model at 3, 6, 9, 12 and 15 months turns that into a trajectory, so the two genotypes can be compared on **when** they diverge, not only where they end up.
+Answering it means measuring those inter-regional relationships directly. STAMP's attention mechanism does exactly this: for every region at every moment, it learns a directed, content-dependent weight to every other region at every earlier moment — no relationship is fixed in advance.
+
+That structure is then reduced to a single number per region: reconstruction R². A region stays high when it is still predictable from the rest of the cortex, and falls as it decouples. Running the same model at 3, 6, 9, 12 and 15 months turns that number into a trajectory, so the two genotypes can be compared on when they start to diverge, not just how far apart they end up.
 
 Two read-outs come out of a trained model:
 
