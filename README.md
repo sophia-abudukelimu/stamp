@@ -8,9 +8,11 @@ The model is trained by **masked reconstruction under block-causal attention**: 
 
 ## Overview
 
-Widefield imaging of a cholinergic sensor gives a continuous trace for 82 cortical parcels at 10 Hz. Pairs of parcels are bilateral homologues, so averaging adjacent channels leaves **41 bilateral regions**. Recordings come from wild-type mice and from a knock-in AD model (DKI) at **3, 6, 9, 12 and 15 months**.
+Widefield imaging of a cholinergic sensor covers the whole dorsal cortex at 10 Hz. The imaging field is divided into a **grid parcellation of 82 cortical parcels**, 41 anatomical areas, each appearing once in the left and once in the right hemisphere. Because the two hemispheres of an area are bilateral homologues, adjacent channel pairs `(1,2), (3,4) … (81,82)` are averaged together, leaving **41 bilateral regions**. Recordings come from wild-type mice and from a knock-in AD model (DKI) at **3, 6, 9, 12 and 15 months**.
 
-The question is whether cholinergic coordination across the cortex degrades with age, and whether it degrades differently in the AD model. STAMP answers it indirectly but quantitatively: if a region's activity can still be reconstructed from the rest of the cortex, it is still coupled to the network; when its reconstruction R² falls, it has decoupled.
+The question is whether the **spatio-temporal structure** of cortical acetylcholine signalling is disrupted in the AD model — which regions predict which, and whether that coupling breaks down progressively with age. 
+
+Answering it means measuring those inter-regional relationships directly, which is exactly what STAMP's attention mechanism computes: for every region at every moment, it learns a directed, content-dependent weight to every other region at every earlier moment. STAMP further turns this into a number — a region's reconstruction R² stays high while it is coupled to the rest of the cortex and falls as it decouples — and running the same model at 3, 6, 9, 12 and 15 months turns that into a trajectory, so the two genotypes can be compared on **when** they diverge, not only where they end up.
 
 Two read-outs come out of a trained model:
 
@@ -115,13 +117,16 @@ Off-diagonal rollout mass, lag >= 1   97.5%
 Causal leak ratio (trained)           14.2%
 ```
 
-| Age | WT | AD (DKI) | AD − WT |
+Each number is the **mean masked R² across all 41 regions** for that age × genotype group, evaluated at 70% masking. R² = 1 is perfect reconstruction; **R² = 0 means no better than predicting the window mean**, so it is the floor. The last column is the genotype gap: negative means the AD group is *less* reconstructable than WT at that age.
+
+| Age | WT<br>mean R² | AD (DKI)<br>mean R² | AD − WT<br>gap |
 |---|---|---|---|
 | 3mo | 0.288 | 0.297 | +0.008 |
 | 6mo | 0.254 | 0.236 | −0.018 |
 | 9mo | 0.262 | 0.200 | −0.061 |
 | 12mo | 0.262 | 0.169 | −0.093 |
 | 15mo | 0.280 | 0.168 | **−0.113** |
+
 
 The generator was built so that WT stays flat while AD decouples progressively after 3 months, and the pipeline recovers that: the two genotypes are indistinguishable at 3 months and separate steadily thereafter. **This is a property of the simulator, not a finding** — it is here to show what a positive result looks like when the pipeline is working.
 
@@ -131,7 +136,9 @@ The absolute R² is modest because the demo trains on 799 windows; the real data
 
 ## Model
 
-A 15-second window becomes a grid of **41 regions × 10 time patches = 410 tokens**, each token holding 1.5 s of one region. A CLS token is prepended, giving a sequence of 411.
+Each session is a continuous recording, far longer than the model's input. It is cut into **non-overlapping 15-second windows** of 150 frames at 10 Hz; on the real dataset this yields 70,235 usable windows from 208 sessions. Each window is z-scored per region, so every window is independent and every region is on the same scale.
+
+One window is then cut a second time, along both axes. The 15 seconds are split into **10 time patches of 1.5 s (15 frames each)**, and that cut is crossed with the 41 regions, giving a grid of **41 regions × 10 time patches = 410 cells**. Each cell becomes one token holding 1.5 s of one region, and a CLS token is prepended, for a sequence of 411.
 
 | Stage | Operation | Output shape |
 |---|---|---|
@@ -202,49 +209,56 @@ Two independent mask draws of the same window give two views. The MSE is scored 
 
 ### Reconstruction quality
 
-| Figure | Question it answers |
+| Figure | What it shows |
 |---|---|
-| `training_curves.png` | did MSE, MAE, R² and correlation converge? |
-| `overfitting_check.png` | train R² minus validation R². Positive and growing would mean memorization; it sits **below** zero because dropout is on during training and off during validation |
-| `region_r2_bars.png` | which of the 41 regions are easy and which are hard, sorted |
-| `brain_r2_all.png` | the same, painted on the cortex |
+| `training_curves.png` | MSE, MAE, R² and correlation over training, train against validation |
+| `overfitting_check.png` | train R² minus validation R². It sits **below** zero because dropout is on during training and off during validation; positive and growing would mean memorization |
+| `region_r2_bars.png` | the 41 regions ranked from hardest to easiest to reconstruct |
+| `brain_r2_all.png` | the same values painted on the cortex |
+
+![Training curves](docs/figures/training_curves.png)
+
+*Four panels over 40 epochs, train against validation: masked MSE, masked MAE, masked R², and correlation. MSE falls from 1.14 to 0.78 while the zero-prediction baseline sits at 1.00, so the model is genuinely reconstructing rather than predicting the window mean. Validation tracks train throughout. Synthetic data.*
 
 ### Age and genotype
 
-| Figure | Question it answers |
+| Figure | What it shows |
 |---|---|
-| `brain_r2_by_age_genotype.png` | 2 × 5 grid: WT and AD at each age |
+| `brain_r2_by_age_genotype.png` | a 2 × 5 grid: WT above, AD below, 3 to 15 months left to right |
 | `brain_r2_age_differences.png` | consecutive ages within genotype, `later − earlier` |
 | `brain_r2_genotype_difference.png` | **AD − WT**, pooled and per age. Blue means AD is less predictable |
 | `r2_trajectories.png` | mean R² against age, one line per genotype |
+
+![R² by age and genotype](docs/figures/brain_r2_by_age_genotype.png)
+
+*Per-region masked R² painted on the cortex, WT above and AD below, 3 to 15 months left to right. White is R² = 0. The AD row fades progressively while the WT row stays flat. Synthetic data.*
+
+![Age differences](docs/figures/brain_r2_age_differences.png)
+
+*The same result as a difference: each panel is `later age − earlier age` within one genotype, so white means nothing changed between those two timepoints. Subtracting removes the region-to-region baseline — some areas are simply always easier to reconstruct — and leaves only what moved. WT panels stay near white; AD panels go increasingly blue. Synthetic data.*
+
+![R² trajectories](docs/figures/r2_trajectories.png)
+
+*Mean per-region R² against age, one line per genotype. The two start together at 3 months and separate steadily after. Synthetic data.*
 
 Colour convention throughout: **white sits exactly at R² = 0**, and the stops are packed between 0.70 and 1.00 where nearly all regions land. Blue means the model does worse than predicting the window mean.
 
 ### Attention
 
-| Figure | Question it answers |
+| Figure | What it shows |
 |---|---|
-| `attention_mask_and_rollout.png` | the allowed mask beside the realised rollout, as a check that the causal structure survived two layers |
+| `attention_mask_and_rollout.png` | the allowed mask beside the realised rollout, confirming the causal structure survived both layers |
 | `region_to_region_rollout.png` | **the important one.** Three panels: all lags, lag 0 only, lag ≥ 1 only |
 | `rollout_region_time.png` | how rollout mass is distributed over the ten time patches |
 | `brain_attention_rollout.png` | which regions contribute most to the CLS embedding |
 
 ![Region-to-region rollout](docs/figures/region_to_region_rollout.png)
 
-*Attention rollout collapsed to region × region, split by temporal lag. Left: all lags pooled. Middle: lag 0, within one 1.5 s patch — the matrix is almost pure diagonal, so at a single instant each region attends mainly to itself. Right: lag ≥ 1, past patches only — the off-diagonal structure appears here, and only here. Off-diagonal mass is 50.8% at lag 0 against 97.5% at lag ≥ 1. Synthetic data.*
+*Attention rollout collapsed to region × region, split by temporal lag. Left: all lags pooled. Middle: lag 0, within one 1.5 s patch — almost pure diagonal, so at a single instant each region attends mainly to itself. Right: lag ≥ 1, past patches only — the off-diagonal structure appears here, and only here. Off-diagonal mass is 50.8% at lag 0 against 97.5% at lag ≥ 1. Synthetic data.*
 
-![R² by age and genotype](docs/figures/brain_r2_by_age_genotype.png)
-
-*Per-region masked R² painted on the cortex, WT above and AD below, 3 to 15 months left to right. White is R² = 0. Synthetic data.*
-
-![R² trajectories](docs/figures/r2_trajectories.png)
-
-*Mean per-region R² against age. The two genotypes start together and separate after 3 months. Synthetic data.*
-
-**On reading `region_to_region_rollout.png`:** the middle panel (lag 0, same 1.5 s patch) and the right panel (lag ≥ 1, past patches only) answer different questions. If the off-diagonal structure lives mostly in the right panel, regions relate to each other **across time** rather than within a moment — cortical areas take turns rather than moving together. `analyze.py` prints the off-diagonal mass of each panel so this can be quoted as a number.
+**On reading `region_to_region_rollout.png`:** the middle panel (lag 0) and the right panel (lag ≥ 1) answer different questions. If the off-diagonal structure lives mostly in the right panel, regions relate to each other **across time** rather than within a moment — cortical areas take turns rather than moving together. `analyze.py` prints the off-diagonal mass of each panel so this can be quoted as a number.
 
 **On reading `rollout_region_time.png`:** the peak at `t0` is **structural, not a finding**. Because attention only looks backwards, an early patch is readable by every later query while the last patch is readable only by itself, so early patches accumulate rollout mass from more queries. Only deviations from that baseline are interpretable.
-
 ---
 
 ## Project Structure
